@@ -88,6 +88,12 @@ try {
     $excel.DisplayAlerts = $false
     try { $excel.AskToUpdateLinks = $false } catch {}
     $wb = $excel.Workbooks.Open($xlsx)
+    # The workbook lives in a OneDrive folder, so AutoSave is on by default and
+    # would persist the temporary things we do for the PDF (the export turns on
+    # page-break preview lines, the fill-zoom, the tab re-order) even though we
+    # Close($false). Turn it off so the ONLY thing that ever gets written back is
+    # our deliberate Save of the refreshed data, below.
+    try { $wb.AutoSaveOn = $false } catch {}
 
     # CRITICAL: switch off automatic recalculation. The commodity sheets use
     # IMAGE() formulas for the country flags, and every recalc re-downloads all
@@ -136,6 +142,10 @@ try {
         Start-Sleep -Milliseconds 500
     }
     try { $excel.CalculateUntilAsyncQueriesDone() } catch {}
+    # Clear Excel's dashed page-break preview lines on every sheet before saving,
+    # so the saved workbook never shows them in Normal view. (They get switched on
+    # automatically whenever a print area is set or a sheet is exported.)
+    foreach ($ws in $wb.Worksheets) { try { $ws.DisplayPageBreaks = $false } catch {} }
     $wb.Save()                        # persist the refreshed data
     Write-Host "    queries refreshed, recalculated, and workbook saved."
 
